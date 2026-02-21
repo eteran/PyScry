@@ -28,3 +28,12 @@ python -m pyscry.cli . -f json --pretty -o deps.json
 # use 4 worker processes
 python -m pyscry.cli . -j 4
 ```
+
+## Version rendering
+
+PyScry supports a `--version-style` option to control how package versions
+are rendered in the output. Options:
+
+- `minimum` (default): `Module>=x.y.z`
+- `compatible`: `Module~=x.y.z`
+- `none`: omit versions: `Module`

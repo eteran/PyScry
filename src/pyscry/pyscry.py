@@ -23,6 +23,12 @@ class DistributionInfo:
     name: str
     version: str | None = None
 
+    def to_specifier(self, version_style: str = "minimum") -> str:
+        if self.version is None or version_style == "none":
+            return self.name
+        op = "~=" if version_style == "compatible" else ">="
+        return f"{self.name}{op}{self.version}"
+
 
 def find_imports(tree: ast.Module) -> set[str]:
     """
@@ -148,6 +154,7 @@ def process_files(
     output: TextIO | None = None,
     output_format: str = "text",
     pretty: bool = False,
+    version_style: str = "minimum",
 ) -> None:
     """
     Main processing function: collects imports and maps them to distributions.
@@ -162,20 +169,15 @@ def process_files(
     dist_map = dict(zip(imports, mapped, strict=True))
 
     # Flatten and dedupe distribution specifiers in deterministic order.
-    # Convert `DistributionInfo` to string specifiers here to preserve
-    # the existing output format (e.g. "pkg>=1.2.3").
-    flattened = {
-        (f"{info.name}>={info.version}" if info.version else info.name)
-        for specs in dist_map.values()
-        for info in specs
-    }
+    # Use the DistributionInfo.to_specifier helper so formatting is
+    # centralized.
+    flattened = {info.to_specifier(version_style) for specs in dist_map.values() for info in specs}
     dists = sorted(flattened)
 
     def create_writer() -> TextIO:
         if output is None:
             return sys.stdout
-
-        return output.open("w", encoding="utf-8")
+        return output
 
     writer = create_writer()
 

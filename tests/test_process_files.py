@@ -47,3 +47,37 @@ def test_process_files_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert "missingpkg" in payload["unresolved"] and payload["unresolved"]["missingpkg"] == []
     # stdlib module 'os' should not appear in unresolved
     assert "os" not in payload["unresolved"]
+
+
+@pytest.mark.parametrize(
+    "version_style,expected",
+    [
+        ("minimum", "requests-pkg>=1.2.3"),
+        ("compatible", "requests-pkg~=1.2.3"),
+        ("none", "requests-pkg"),
+    ],
+)
+def test_version_style_rendering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version_style: str, expected: str) -> None:
+    # Create sample source files
+    f1 = tmp_path / "file1.py"
+    f1.write_text("import requests\n")
+
+    # Monkeypatch PKG_MAP and md.version
+    monkeypatch.setattr(pyscry, "PKG_MAP", {"requests": ["requests-pkg"]})
+
+    class DummyMD:
+        @staticmethod
+        def version(dist: str) -> str:
+            if dist == "requests-pkg":
+                return "1.2.3"
+            raise pyscry.md.PackageNotFoundError(dist)
+
+    monkeypatch.setattr(pyscry, "md", DummyMD)
+
+    out: io.StringIO = io.StringIO()
+    pool: FakePool = FakePool()
+    pyscry.process_files(pool, [f1], output=out, output_format="json", pretty=False, version_style=version_style)
+
+    out.seek(0)
+    payload = json.load(out)
+    assert payload["distributions"] == [expected]

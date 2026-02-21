@@ -47,8 +47,19 @@ def collect_py_files(paths: list[Path]) -> list[Path]:
     default=None,
     help="Write discovered distributions to FILE instead of stdout",
 )
+@click.option(
+    "--version-style",
+    type=click.Choice(["compatible", "minimum", "none"], case_sensitive=True),
+    default="minimum",
+    help="How to render versions: compatible (~=), minimum (>=), or none (omit)",
+)
 def main(
-    paths: list[Path], jobs: int, output: Path | None, output_format: str, pretty: bool
+    paths: list[Path],
+    jobs: int,
+    output: Path | None,
+    output_format: str,
+    pretty: bool,
+    version_style: str,
 ) -> None:
 
     if jobs < 1:
@@ -68,7 +79,14 @@ def main(
             fh = output.open("w", encoding="utf-8")
 
         with mp.Pool(jobs) as pool:
-            process_files(pool, real_paths, output=fh, output_format=output_format, pretty=pretty)
+            process_files(
+                pool,
+                real_paths,
+                output=fh,
+                output_format=output_format,
+                pretty=pretty,
+                version_style=version_style,
+            )
     finally:
         if fh is not None:
             fh.close()
