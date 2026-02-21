@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 from pathlib import Path
+from contextlib import ExitStack
 
 import click
 
@@ -70,13 +71,13 @@ def main(
     if not real_paths:
         raise click.BadParameter("No Python files found in the specified paths")
 
-    # Open output file if requested, pass file handle to process_files.
-    fh = None
-    try:
+    # Manage output file and other context via ExitStack for simpler cleanup
+    with ExitStack() as stack:
+        fh = None
         if output is not None:
             if output.exists() and output.is_dir():
                 raise click.BadParameter("--output must be a file, not a directory")
-            fh = output.open("w", encoding="utf-8")
+            fh = stack.enter_context(output.open("w", encoding="utf-8"))
 
         with mp.Pool(jobs) as pool:
             process_files(
@@ -87,9 +88,6 @@ def main(
                 pretty=pretty,
                 version_style=version_style,
             )
-    finally:
-        if fh is not None:
-            fh.close()
 
 
 if __name__ == "__main__":
