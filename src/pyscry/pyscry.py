@@ -45,8 +45,11 @@ def module_to_distribution(module_name: str) -> str | None:
 
     # Usually only one distribution provides a top-level module
     dist = dists[0]
-    version = md.version(dist)
-    return f"{dist}>={version}"
+    try:
+        version = md.version(dist)
+        return f"{dist}>={version}"
+    except md.PackageNotFoundError:
+        return dist
 
 
 def is_stdlib_module(module_name: str) -> bool:
@@ -71,39 +74,50 @@ def is_stdlib_module(module_name: str) -> bool:
         return False
 
 
-def collect_imports_from_source(path: str) -> set[str]:
+def collect_imports_from_source(path: Path) -> set[str]:
     """
     Read a Python source file, parse it, and collect all imported modules.
     """
-    print(f"Collecting Imports... {path}")
-    source = Path(path).read_text()
-    tree = ast.parse(source, filename=path)
-    return find_imports(tree)
+    logger.debug(f"Collecting Imports... {path}")
+
+    try:
+        source = path.read_text()
+        tree = ast.parse(source, filename=str(path))
+        return find_imports(tree)
+    except SyntaxError as e:
+        logger.warning(f"Syntax error in {path}: {e}")
+        return set()
+    except OSError as e:
+        logger.warning(f"Error reading {path}: {e}")
+        return set()
 
 
-def collect_imports(pool: multiprocessing.pool.Pool, paths: list[str]) -> list[str]:
+def collect_imports(pool, paths: list[Path]) -> list[str]:
     """
-    Collect imports from multiple source files using a multiprocessing pool.
+    Collect imports from multiple source files using an executor that
+    provides a ``map(func, iterable)`` method (e.g. ``multiprocessing.Pool``
+    or ``concurrent.futures.ThreadPoolExecutor``).
     """
-    results = pool.map(collect_imports_from_source, paths)
-    return list(set(itertools.chain.from_iterable(results)))
+    results = list(pool.map(collect_imports_from_source, paths))
+    return sorted(set(itertools.chain.from_iterable(results)))
 
 
-def process_files(pool: multiprocessing.pool.Pool, files: list[str]) -> None:
+def process_files(pool, paths: list[Path]) -> None:
     """
     Main processing function: collects imports and maps them to distributions.
     """
-    imports = collect_imports(pool, files)
+    imports = collect_imports(pool, paths)
 
-    print("Mapping modules to distributions...")
-    dists = pool.map(module_to_distribution, imports)
+    logger.debug("Mapping modules to distributions...")
+    dists = list(pool.map(module_to_distribution, imports))
     dist_map = dict(zip(imports, dists, strict=True))
 
-    for _, dist in dist_map.items():
-        if dist:
-            print(dist)
+    dists = {d for d in dist_map.values() if d}
+
+    for dist in dists:
+        print(dist)
 
     for module, dist in dist_map.items():
         if not is_stdlib_module(module):
             if not dist:
-                print(f"  {module} → (unresolved)")
+                logger.info(f"  {module} → (unresolved)")
