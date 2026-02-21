@@ -92,24 +92,22 @@ def collect_imports_from_source(path: Path) -> set[str]:
         return set()
 
 
-def collect_imports(pool, paths: list[Path]) -> list[str]:
+def collect_imports(pool: multiprocessing.pool.Pool, paths: list[Path]) -> list[str]:
     """
-    Collect imports from multiple source files using an executor that
-    provides a ``map(func, iterable)`` method (e.g. ``multiprocessing.Pool``
-    or ``concurrent.futures.ThreadPoolExecutor``).
+    Collect imports from multiple source files using a multiprocessing pool.
     """
-    results = list(pool.map(collect_imports_from_source, paths))
+    results = pool.map(collect_imports_from_source, paths)
     return sorted(set(itertools.chain.from_iterable(results)))
 
 
-def process_files(pool, paths: list[Path]) -> None:
+def process_files(pool: multiprocessing.pool.Pool, paths: list[Path]) -> None:
     """
     Main processing function: collects imports and maps them to distributions.
     """
     imports = collect_imports(pool, paths)
 
     logger.debug("Mapping modules to distributions...")
-    dists = list(pool.map(module_to_distribution, imports))
+    dists = pool.map(module_to_distribution, imports)
     dist_map = dict(zip(imports, dists, strict=True))
 
     dists = {d for d in dist_map.values() if d}
