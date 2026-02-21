@@ -1,13 +1,9 @@
-#!/usr/bin/env python3
-
-import argparse
 import ast
 import importlib
 import importlib.metadata as md
 import itertools
 import logging
 import multiprocessing as mp
-import os
 import sysconfig
 from pathlib import Path
 
@@ -18,6 +14,11 @@ PKG_MAP = md.packages_distributions()
 
 
 def find_imports(tree: ast.Module) -> set[str]:
+    """
+    Walk the AST to find all imported modules.
+    Only top-level modules are collected (e.g. 'requests' from 'import requests' or 'from requests import get').
+    Relative imports are ignored.
+    """
     modules = set()
 
     for node in ast.walk(tree):
@@ -48,6 +49,10 @@ def module_to_distribution(module_name: str) -> str | None:
 
 
 def is_stdlib_module(module_name: str) -> bool:
+    """
+    Determine if a module is part of the Python standard library.
+    This is done by checking the module's origin against the standard library path.
+    """
     spec = importlib.util.find_spec(module_name)
     if spec is None or spec.origin is None:
         return False
@@ -66,6 +71,9 @@ def is_stdlib_module(module_name: str) -> bool:
 
 
 def collect_imports_from_source(path: str) -> set[str]:
+    """
+    Read a Python source file, parse it, and collect all imported modules.
+    """
     print(f"Collecting Imports... {path}")
     source = Path(path).read_text()
     tree = ast.parse(source, filename=path)
@@ -73,11 +81,17 @@ def collect_imports_from_source(path: str) -> set[str]:
 
 
 def collect_imports(pool, paths: list[str]) -> list[str]:
+    """
+    Collect imports from multiple source files using a multiprocessing pool.
+    """
     results = pool.map(collect_imports_from_source, paths)
     return list(set(itertools.chain.from_iterable(results)))
 
 
 def process_files(pool, files: list[str]) -> None:
+    """
+    Main processing function: collects imports and maps them to distributions.
+    """
     imports = collect_imports(pool, files)
 
     print("Mapping modules to distributions...")
@@ -92,22 +106,3 @@ def process_files(pool, files: list[str]) -> None:
         if not is_stdlib_module(module):
             if not dist:
                 print(f"  {module} → (unresolved)")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Find imports and their distributions")
-    parser.add_argument(
-        "files",
-        nargs="+",
-        help="List of input files (use wildcards like *.txt if needed)",
-    )
-    args = parser.parse_args()
-
-    cores = os.cpu_count() or 1
-
-    with mp.Pool(cores) as pool:
-        process_files(pool, args.files)
-
-
-if __name__ == "__main__":
-    main()
