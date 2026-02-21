@@ -1,0 +1,17 @@
+[project]
+name = "pyscry"
+version = "1.0.0"
+description = "PyScry analyzes your codebase and uncovers the exact Python packages behind every import."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+pyscry = "pyscry.pyscry:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyscry"]
