@@ -8,6 +8,7 @@ import logging
 import multiprocessing.pool
 import sys
 import sysconfig
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
@@ -15,6 +16,12 @@ logger = logging.getLogger(__name__)
 
 # Preload the mapping once — huge speedup
 PKG_MAP = md.packages_distributions()
+
+
+@dataclass(slots=True)
+class DistributionInfo:
+    name: str
+    version: str | None = None
 
 
 def find_imports(tree: ast.Module) -> set[str]:
@@ -38,21 +45,22 @@ def find_imports(tree: ast.Module) -> set[str]:
     return modules
 
 
-def module_to_distribution(module_name: str) -> str | None:
+def module_to_distributions(module_name: str) -> list[DistributionInfo]:
     """
     Fast lookup using importlib.metadata.packages_distributions().
-    """
-    dists = PKG_MAP.get(module_name)
-    if not dists:
-        return None
 
-    # Usually only one distribution provides a top-level module
-    dist = dists[0]
-    try:
-        version = md.version(dist)
-        return f"{dist}>={version}"
-    except md.PackageNotFoundError:
-        return dist
+    Returns a list of `DistributionInfo` objects (name + optional version).
+    If no distribution provides the module an empty list is returned.
+    """
+    dists = PKG_MAP.get(module_name) or []
+    results: list[DistributionInfo] = []
+    for dist in dists:
+        try:
+            version = md.version(dist)
+            results.append(DistributionInfo(name=dist, version=version))
+        except md.PackageNotFoundError:
+            results.append(DistributionInfo(name=dist))
+    return results
 
 
 def is_stdlib_module(module_name: str) -> bool:
@@ -150,16 +158,26 @@ def process_files(
     imports = collect_imports(pool, paths)
 
     logger.debug("Mapping modules to distributions...")
-    dists = pool.map(module_to_distribution, imports)
-    dist_map = dict(zip(imports, dists, strict=True))
+    mapped = pool.map(module_to_distributions, imports)
+    dist_map = dict(zip(imports, mapped, strict=True))
 
-    dists = sorted({d for d in dist_map.values() if d})
+    # Flatten and dedupe distribution specifiers in deterministic order.
+    # Convert `DistributionInfo` to string specifiers here to preserve
+    # the existing output format (e.g. "pkg>=1.2.3").
+    flattened = {
+        (f"{info.name}>={info.version}" if info.version else info.name)
+        for specs in dist_map.values()
+        for info in specs
+    }
+    dists = sorted(flattened)
 
-    writer: TextIO
-    if output is None:
-        writer = sys.stdout
-    else:
-        writer = output
+    def create_writer() -> TextIO:
+        if output is None:
+            return sys.stdout
+
+        return output.open("w", encoding="utf-8")
+
+    writer = create_writer()
 
     match output_format:
         case "text":
@@ -184,7 +202,7 @@ def process_files(
         case _:
             raise ValueError(f"unsupported output_format: {output_format}")
 
-    for module, dist in dist_map.items():
+    for module, specs in dist_map.items():
         if not is_stdlib_module(module):
-            if not dist:
+            if not specs:
                 logger.info(f"  {module} → (unresolved)")
