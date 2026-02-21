@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import os
-from pathlib import Path
 from contextlib import ExitStack
+from pathlib import Path
 
 import click
 
