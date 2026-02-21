@@ -4,6 +4,7 @@ import importlib.metadata as md
 import importlib.util
 import itertools
 import logging
+import multiprocessing.pool
 import sysconfig
 from pathlib import Path
 
@@ -16,7 +17,7 @@ PKG_MAP = md.packages_distributions()
 def find_imports(tree: ast.Module) -> set[str]:
     """
     Walk the AST to find all imported modules.
-    Only top-level modules are collected (e.g. 'requests' from 'import requests' or 'from requests import get').
+    Only top-level modules are collected.
     Relative imports are ignored.
     """
     modules = set()
@@ -80,7 +81,7 @@ def collect_imports_from_source(path: str) -> set[str]:
     return find_imports(tree)
 
 
-def collect_imports(pool, paths: list[str]) -> list[str]:
+def collect_imports(pool: multiprocessing.pool.Pool, paths: list[str]) -> list[str]:
     """
     Collect imports from multiple source files using a multiprocessing pool.
     """
@@ -88,7 +89,7 @@ def collect_imports(pool, paths: list[str]) -> list[str]:
     return list(set(itertools.chain.from_iterable(results)))
 
 
-def process_files(pool, files: list[str]) -> None:
+def process_files(pool: multiprocessing.pool.Pool, files: list[str]) -> None:
     """
     Main processing function: collects imports and maps them to distributions.
     """
@@ -96,9 +97,9 @@ def process_files(pool, files: list[str]) -> None:
 
     print("Mapping modules to distributions...")
     dists = pool.map(module_to_distribution, imports)
-    dist_map = dict(zip(imports, dists))
+    dist_map = dict(zip(imports, dists, strict=True))
 
-    for module, dist in dist_map.items():
+    for _, dist in dist_map.items():
         if dist:
             print(dist)
 
