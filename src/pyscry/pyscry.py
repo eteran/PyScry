@@ -177,7 +177,7 @@ def process_files(
 
             payload = {"distributions": dists, "unresolved": unresolved}
             if pretty:
-                json.dump(payload, writer, indent=2)
+                json.dump(payload, writer, indent=2, ensure_ascii=False)
             else:
                 json.dump(payload, writer, separators=(",", ":"), ensure_ascii=False)
             writer.write("\n")
