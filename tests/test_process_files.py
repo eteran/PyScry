@@ -52,9 +52,10 @@ def test_process_files_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 @pytest.mark.parametrize(
     "version_style,expected",
     [
-        ("minimum", "requests-pkg>=1.2.3"),
-        ("compatible", "requests-pkg~=1.2.3"),
-        ("none", "requests-pkg"),
+            ("minimum", "requests-pkg>=1.2.3"),
+            ("compatible", "requests-pkg~=1.2.3"),
+            ("none", "requests-pkg"),
+            ("exact", "requests-pkg==1.2.3"),
     ],
 )
 def test_version_style_rendering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version_style: str, expected: str) -> None:

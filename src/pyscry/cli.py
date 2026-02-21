@@ -50,9 +50,9 @@ def collect_py_files(paths: list[Path]) -> list[Path]:
 )
 @click.option(
     "--version-style",
-    type=click.Choice(["compatible", "minimum", "none"], case_sensitive=True),
+    type=click.Choice(["compatible", "minimum", "none", "exact"], case_sensitive=True),
     default="minimum",
-    help="How to render versions: compatible (~=), minimum (>=), or none (omit)",
+    help="How to render versions: compatible (~=), minimum (>=), exact (==), or none (omit)",
 )
 def main(
     paths: list[Path],

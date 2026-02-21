@@ -19,14 +19,19 @@ PKG_MAP = md.packages_distributions()
 
 
 @dataclass(slots=True)
-class DistributionInfo:
+class Distribution:
     name: str
     version: str | None = None
 
     def to_specifier(self, version_style: str = "minimum") -> str:
         if self.version is None or version_style == "none":
             return self.name
-        op = "~=" if version_style == "compatible" else ">="
+        if version_style == "compatible":
+            op = "~="
+        elif version_style == "exact":
+            op = "=="
+        else:
+            op = ">="
         return f"{self.name}{op}{self.version}"
 
 
@@ -51,21 +56,21 @@ def find_imports(tree: ast.Module) -> set[str]:
     return modules
 
 
-def module_to_distributions(module_name: str) -> list[DistributionInfo]:
+def module_to_distributions(module_name: str) -> list[Distribution]:
     """
     Fast lookup using importlib.metadata.packages_distributions().
 
-    Returns a list of `DistributionInfo` objects (name + optional version).
+    Returns a list of `Distribution` objects (name + optional version).
     If no distribution provides the module an empty list is returned.
     """
     dists = PKG_MAP.get(module_name) or []
-    results: list[DistributionInfo] = []
+    results: list[Distribution] = []
     for dist in dists:
         try:
             version = md.version(dist)
-            results.append(DistributionInfo(name=dist, version=version))
+            results.append(Distribution(name=dist, version=version))
         except md.PackageNotFoundError:
-            results.append(DistributionInfo(name=dist))
+            results.append(Distribution(name=dist))
     return results
 
 
