@@ -15,3 +15,6 @@ pyscry = "pyscry.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyscry"]
+
+[dependency-groups]
+dev = ["pytest>=8.0.0", "ruff", "pyright"]

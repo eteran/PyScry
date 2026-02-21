@@ -1,9 +1,9 @@
 import ast
 import importlib
 import importlib.metadata as md
+import importlib.util
 import itertools
 import logging
-import multiprocessing as mp
 import sysconfig
 from pathlib import Path
 
