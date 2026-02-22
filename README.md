@@ -35,5 +35,27 @@ PyScry supports a `--version-style` option to control how package versions
 are rendered in the output. Options:
 
 - `minimum` (default): `Module>=x.y.z`
+- `exact`: `Module==x.y.z`.
 - `compatible`: `Module~=x.y.z`
 - `none`: omit versions: `Module`
+
+
+Other useful CLI options:
+
+- `--exclude / -x PATTERN` : exclude files matching a glob pattern (basename,
+  absolute path, or path relative to the provided input roots). Can be passed
+  multiple times. Example: `-x "tests/*" -x "*/migrations/*"`.
+- `--verbose / -v` : enable debug logging for troubleshooting.
+
+Examples
+
+```bash
+# omit versions
+python -m pyscry.cli . -f text --version-style none
+
+# exclude tests and migrations
+python -m pyscry.cli . -f json -o deps.json -x "tests/*" -x "*/migrations/*"
+
+# enable debug logging
+python -m pyscry.cli . -v .
+```

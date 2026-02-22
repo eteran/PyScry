@@ -1,6 +1,7 @@
 import ast
 import importlib
 import importlib.metadata as md
+from importlib.metadata import PackageNotFoundError
 import importlib.util
 import itertools
 import json
@@ -69,7 +70,7 @@ def module_to_distributions(module_name: str) -> list[Distribution]:
         try:
             version = md.version(dist)
             results.append(Distribution(name=dist, version=version))
-        except md.PackageNotFoundError:
+        except PackageNotFoundError:
             results.append(Distribution(name=dist))
     return results
 
@@ -110,19 +111,18 @@ def is_stdlib_module(module_name: str) -> bool:
             pass
 
     # Namespace packages may have no origin but have search locations
-    locations = getattr(spec, "submodule_search_locations", None)
-    if locations:
-        for loc in locations:
-            try:
-                loc_path = Path(loc)
-                for sp in stdlib_paths:
-                    try:
-                        loc_path.relative_to(sp)
-                        return True
-                    except Exception:
-                        continue
-            except Exception:
-                continue
+    locations = getattr(spec, "submodule_search_locations", [])
+    for loc in locations:
+        try:
+            loc_path = Path(loc)
+            for sp in stdlib_paths:
+                try:
+                    loc_path.relative_to(sp)
+                    return True
+                except Exception:
+                    continue
+        except Exception:
+            continue
 
     return False
 
@@ -173,9 +173,7 @@ def process_files(
     mapped = pool.map(module_to_distributions, imports)
     dist_map = dict(zip(imports, mapped, strict=True))
 
-    # Flatten and dedupe distribution specifiers in deterministic order.
-    # Use the DistributionInfo.to_specifier helper so formatting is
-    # centralized.
+    # Flatten and de-dupe distribution specifiers in deterministic order.
     flattened = {info.to_specifier(version_style) for specs in dist_map.values() for info in specs}
     dists = sorted(flattened)
 

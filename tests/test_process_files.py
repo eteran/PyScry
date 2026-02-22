@@ -29,7 +29,7 @@ def test_process_files_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         def version(dist: str) -> str:
             if dist == "requests-pkg":
                 return "1.2.3"
-            raise pyscry.md.PackageNotFoundError(dist)
+            raise pyscry.PackageNotFoundError(dist)
 
     monkeypatch.setattr(pyscry, "md", DummyMD)
 
@@ -71,7 +71,7 @@ def test_version_style_rendering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         def version(dist: str) -> str:
             if dist == "requests-pkg":
                 return "1.2.3"
-            raise pyscry.md.PackageNotFoundError(dist)
+            raise pyscry.PackageNotFoundError(dist)
 
     monkeypatch.setattr(pyscry, "md", DummyMD)
 

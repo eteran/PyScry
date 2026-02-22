@@ -11,7 +11,7 @@ import click
 from .pyscry import process_files
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+
 
 def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -> list[Path]:
     """
@@ -110,6 +110,7 @@ def main(
     excludes: tuple[str, ...],
     verbose: bool,
 ) -> None:
+    logging.basicConfig(format="%(levelname)s: %(message)s")
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
