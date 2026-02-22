@@ -90,7 +90,12 @@ def is_stdlib_module(module_name: str) -> bool:
     if module_name in sys.builtin_module_names:
         return True
 
-    spec = importlib.util.find_spec(module_name)
+    try:
+        spec = importlib.util.find_spec(module_name)
+    except ValueError:
+        logger.warning(f"ValueError while finding spec for module {module_name}. Treating as stdlib.")
+        return True
+
     if spec is None:
         return False
 
@@ -117,18 +122,19 @@ def is_stdlib_module(module_name: str) -> bool:
             pass
 
     # Namespace packages may have no origin but have search locations
-    locations = getattr(spec, "submodule_search_locations", [])
-    for loc in locations:
-        try:
-            loc_path = Path(loc)
-            for sp in stdlib_paths:
-                try:
-                    loc_path.relative_to(sp)
-                    return True
-                except Exception:
-                    continue
-        except Exception:
-            continue
+    locations = getattr(spec, "submodule_search_locations", None)
+    if locations:
+        for loc in locations:
+            try:
+                loc_path = Path(loc)
+                for sp in stdlib_paths:
+                    try:
+                        loc_path.relative_to(sp)
+                        return True
+                    except Exception:
+                        continue
+            except Exception:
+                continue
 
     return False
 
