@@ -40,13 +40,12 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
                     continue
         return False
 
-    for path in paths:
-        if path.is_file() and path.suffix == ".py":
-            p = path
+    for p in paths:
+        if p.is_file() and p.suffix == ".py":
             if not is_excluded(p):
                 files.append(p.resolve())
-        elif path.is_dir():
-            for file in path.rglob("*.py"):
+        elif p.is_dir():
+            for file in p.rglob("*.py"):
                 p = file
                 if not is_excluded(p):
                     files.append(p.resolve())
