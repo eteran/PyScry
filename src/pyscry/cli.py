@@ -1,14 +1,17 @@
+import fnmatch
+import logging
 import multiprocessing as mp
 import os
+from collections.abc import Iterable
 from contextlib import ExitStack
 from pathlib import Path
-import fnmatch
-from typing import Iterable
 
 import click
 
 from .pyscry import process_files
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -> list[Path]:
     """
@@ -21,6 +24,7 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
     def is_excluded(p: Path) -> bool:
         if not excludes:
             return False
+
         s = p.as_posix()
         for pat in excludes:
             # match against absolute path, basename, and path relative to any input root
@@ -38,14 +42,16 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
 
     for path in paths:
         if path.is_file() and path.suffix == ".py":
-            p = path.resolve()
+            p = path
             if not is_excluded(p):
-                files.append(p)
+                files.append(p.resolve())
         elif path.is_dir():
             for file in path.rglob("*.py"):
-                p = file.resolve()
+                p = file
                 if not is_excluded(p):
-                    files.append(p)
+                    files.append(p.resolve())
+
+    logger.debug(f"Collected {len(files)} Python files from {paths}")
     return files
 
 
@@ -87,6 +93,13 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
     multiple=True,
     help="Exclude file patterns (glob). Can be passed multiple times.",
 )
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    default=False,
+    help="Enable debug logging",
+)
 def main(
     paths: list[Path],
     jobs: int,
@@ -95,7 +108,10 @@ def main(
     pretty: bool,
     version_style: str,
     excludes: tuple[str, ...],
+    verbose: bool,
 ) -> None:
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     if jobs < 1:
         raise click.BadParameter("Number of jobs must be at least 1")
@@ -105,7 +121,6 @@ def main(
     if not real_paths:
         raise click.BadParameter("No Python files found in the specified paths")
 
-    # Manage output file and other context via ExitStack for simpler cleanup
     with ExitStack() as stack:
         fh = None
         if output is not None:
