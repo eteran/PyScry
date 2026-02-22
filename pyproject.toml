@@ -19,10 +19,10 @@ packages = ["src/pyscry"]
 [dependency-groups]
 dev = ["pytest>=8.0.0", "ruff>=0.15.2", "pyright>=1.1.408"]
 
-
 [tool.ruff]
-line-length = 100
+line-length = 110
 target-version = "py312"
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
 select = [

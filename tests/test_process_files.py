@@ -2,7 +2,6 @@ import io
 import json
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -10,7 +9,10 @@ from pyscry import pyscry
 
 
 class FakePool:
-    def map(self, func: Callable[[Any], Any], iterable: Iterable[Path]) -> list[Any]:
+    def map[S, T](
+        self, func: Callable[[S], T], iterable: Iterable[S], chunksize: int | None = None
+    ) -> list[T]:
+        _ = chunksize  # ignore chunksize in this fake implementation
         return [func(x) for x in iterable]
 
 
@@ -52,13 +54,15 @@ def test_process_files_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 @pytest.mark.parametrize(
     "version_style,expected",
     [
-            ("minimum", "requests-pkg>=1.2.3"),
-            ("compatible", "requests-pkg~=1.2.3"),
-            ("none", "requests-pkg"),
-            ("exact", "requests-pkg==1.2.3"),
+        ("minimum", "requests-pkg>=1.2.3"),
+        ("compatible", "requests-pkg~=1.2.3"),
+        ("none", "requests-pkg"),
+        ("exact", "requests-pkg==1.2.3"),
     ],
 )
-def test_version_style_rendering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version_style: str, expected: str) -> None:
+def test_version_style_rendering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version_style: str, expected: str
+) -> None:
     # Create sample source files
     f1 = tmp_path / "file1.py"
     f1.write_text("import requests\n")
@@ -77,7 +81,9 @@ def test_version_style_rendering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     out: io.StringIO = io.StringIO()
     pool: FakePool = FakePool()
-    pyscry.process_files(pool, [f1], output=out, output_format="json", pretty=False, version_style=version_style)
+    pyscry.process_files(
+        pool, [f1], output=out, output_format="json", pretty=False, version_style=version_style
+    )
 
     out.seek(0)
     payload = json.load(out)

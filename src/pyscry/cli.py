@@ -57,9 +57,7 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
 
 @click.command()
 @click.argument("paths", default=["."], nargs=-1, type=click.Path(path_type=Path, exists=True))
-@click.option(
-    "--jobs", "-j", type=int, default=os.cpu_count(), help="Number of parallel jobs to use"
-)
+@click.option("--jobs", "-j", type=int, default=os.cpu_count(), help="Number of parallel jobs to use")
 @click.option(
     "--format",
     "-f",

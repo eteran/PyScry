@@ -1,6 +1,7 @@
-from .pyscry import PackageNotFoundError, process_files
+from .pyscry import Distribution, PackageNotFoundError, process_files
 
 __all__ = [
+    "Distribution",
     "PackageNotFoundError",
     "process_files",
 ]

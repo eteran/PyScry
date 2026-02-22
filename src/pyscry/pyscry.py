@@ -1,22 +1,28 @@
 import ast
 import importlib
 import importlib.metadata as md
-from importlib.metadata import PackageNotFoundError
 import importlib.util
 import itertools
 import json
 import logging
-import multiprocessing.pool
 import sys
 import sysconfig
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-from typing import TextIO
+from typing import Protocol, TextIO
 
 logger = logging.getLogger(__name__)
 
 # Preload the mapping once — huge speedup
 PKG_MAP = md.packages_distributions()
+
+
+class PoolProtocol(Protocol):
+    def map[S, T](
+        self, func: Callable[[S], T], iterable: Iterable[S], chunksize: int | None = None
+    ) -> list[T]: ...
 
 
 @dataclass(slots=True)
@@ -145,7 +151,7 @@ def collect_imports_from_source(path: Path) -> set[str]:
         return set()
 
 
-def collect_imports(pool: multiprocessing.pool.Pool, paths: list[Path]) -> list[str]:
+def collect_imports(pool: PoolProtocol, paths: list[Path]) -> list[str]:
     """
     Collect imports from multiple source files using a multiprocessing pool.
     """
@@ -154,7 +160,7 @@ def collect_imports(pool: multiprocessing.pool.Pool, paths: list[Path]) -> list[
 
 
 def process_files(
-    pool: multiprocessing.pool.Pool,
+    pool: PoolProtocol,
     paths: list[Path],
     output: TextIO | None = None,
     output_format: str = "text",
@@ -191,9 +197,7 @@ def process_files(
         case "json":
             # Build unresolved mapping in deterministic order with sorted candidate lists
             unresolved: dict[str, list[str]] = {}
-            unresolved_modules = [
-                m for m, d in dist_map.items() if (not is_stdlib_module(m) and not d)
-            ]
+            unresolved_modules = [m for m, d in dist_map.items() if (not is_stdlib_module(m) and not d)]
             for module in sorted(unresolved_modules):
                 candidates = PKG_MAP.get(module) or []
                 unresolved[module] = sorted(candidates)
