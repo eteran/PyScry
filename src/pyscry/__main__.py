@@ -45,10 +45,9 @@ def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -
             if not is_excluded(p):
                 files.append(p.resolve())
         elif p.is_dir():
-            for file in p.rglob("*.py"):
-                p = file
-                if not is_excluded(p):
-                    files.append(p.resolve())
+            for f in p.rglob("*.py"):
+                if not is_excluded(f):
+                    files.append(f.resolve())
 
     logger.debug(f"Collected {len(files)} Python files from {paths}")
     return files
