@@ -20,13 +20,13 @@ pip install -e .
 
 ```bash
 # scan current directory, text output
-python -m pyscry.cli .
+python -m pyscry.__main__ .
 
 # json output (pretty) to deps.json
-python -m pyscry.cli . -f json --pretty -o deps.json
+python -m pyscry.__main__ . -f json --pretty -o deps.json
 
 # use 4 worker processes
-python -m pyscry.cli . -j 4
+python -m pyscry.__main__ . -j 4
 ```
 
 ## Version rendering
@@ -51,11 +51,11 @@ Examples
 
 ```bash
 # omit versions
-python -m pyscry.cli . -f text --version-style none
+python -m pyscry.__main__ . -f text --version-style none
 
 # exclude tests and migrations
-python -m pyscry.cli . -f json -o deps.json -x "tests/*" -x "*/migrations/*"
+python -m pyscry.__main__ . -f json -o deps.json -x "tests/*" -x "*/migrations/*"
 
 # enable debug logging
-python -m pyscry.cli . -v .
+python -m pyscry.__main__ . -v .
 ```
