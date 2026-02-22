@@ -2,24 +2,50 @@ import multiprocessing as mp
 import os
 from contextlib import ExitStack
 from pathlib import Path
+import fnmatch
+from typing import Iterable
 
 import click
 
 from .pyscry import process_files
 
 
-def collect_py_files(paths: list[Path]) -> list[Path]:
+def collect_py_files(paths: list[Path], excludes: Iterable[str] | None = None) -> list[Path]:
     """
     Collect all Python source files from the provided paths.
     If a path is a directory, it will be traversed recursively.
     """
     files: list[Path] = []
+    excludes = list(excludes or [])
+
+    def is_excluded(p: Path) -> bool:
+        if not excludes:
+            return False
+        s = p.as_posix()
+        for pat in excludes:
+            # match against absolute path, basename, and path relative to any input root
+            if fnmatch.fnmatch(s, pat) or fnmatch.fnmatch(p.name, pat):
+                return True
+            for root in paths:
+                try:
+                    if root.is_dir() and p.is_relative_to(root):
+                        rel = p.relative_to(root).as_posix()
+                        if fnmatch.fnmatch(rel, pat):
+                            return True
+                except Exception:
+                    continue
+        return False
+
     for path in paths:
         if path.is_file() and path.suffix == ".py":
-            files.append(path.resolve())
+            p = path.resolve()
+            if not is_excluded(p):
+                files.append(p)
         elif path.is_dir():
             for file in path.rglob("*.py"):
-                files.append(file.resolve())
+                p = file.resolve()
+                if not is_excluded(p):
+                    files.append(p)
     return files
 
 
@@ -54,6 +80,13 @@ def collect_py_files(paths: list[Path]) -> list[Path]:
     default="minimum",
     help="How to render versions: compatible (~=), minimum (>=), exact (==), or none (omit)",
 )
+@click.option(
+    "--exclude",
+    "-x",
+    "excludes",
+    multiple=True,
+    help="Exclude file patterns (glob). Can be passed multiple times.",
+)
 def main(
     paths: list[Path],
     jobs: int,
@@ -61,12 +94,13 @@ def main(
     output_format: str,
     pretty: bool,
     version_style: str,
+    excludes: tuple[str, ...],
 ) -> None:
 
     if jobs < 1:
         raise click.BadParameter("Number of jobs must be at least 1")
 
-    real_paths = collect_py_files(paths)
+    real_paths = collect_py_files(paths, excludes=list(excludes))
 
     if not real_paths:
         raise click.BadParameter("No Python files found in the specified paths")
